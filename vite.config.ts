@@ -14,7 +14,12 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
-              external: ['better-sqlite3', 'node:sqlite', 'undici', 'node-pty']
+              external: (id) => {
+                if (id === 'node-pty' || id.startsWith('node-pty/')) return true
+                if (id.includes('conpty') || id.includes('pty.node') || id.includes('winpty')) return true
+                if (id === 'better-sqlite3' || id === 'node:sqlite' || id === 'undici') return true
+                return false
+              }
             }
           }
         }
