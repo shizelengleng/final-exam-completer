@@ -1,0 +1,156 @@
+{
+  "sources": [
+    {
+      "id": "baidu-wenku",
+      "name": "百度文库",
+      "type": "courseware",
+      "searchUrl": "https://wenku.baidu.com/search?word=",
+      "enabled": true,
+      "priority": 1
+    },
+    {
+      "id": "zhihu",
+      "name": "知乎",
+      "type": "qa",
+      "searchUrl": "https://www.zhihu.com/search?type=content&q=",
+      "enabled": true,
+      "priority": 2
+    },
+    {
+      "id": "bilibili",
+      "name": "B站",
+      "type": "video",
+      "searchUrl": "https://search.bilibili.com/all?keyword=",
+      "enabled": true,
+      "priority": 3
+    },
+    {
+      "id": "baidu-xueshu",
+      "name": "百度学术",
+      "type": "academic",
+      "searchUrl": "https://xueshu.baidu.com/s?wd=",
+      "enabled": true,
+      "priority": 4
+    },
+    {
+      "id": "doc88",
+      "name": "道客巴巴",
+      "type": "courseware",
+      "searchUrl": "https://www.doc88.com/search?key=",
+      "enabled": true,
+      "priority": 5
+    },
+    {
+      "id": "douding",
+      "name": "豆丁网",
+      "type": "courseware",
+      "searchUrl": "https://www.docin.com/search.do?searchcat=2&searchType_banner=p&nkey=",
+      "enabled": true,
+      "priority": 6
+    },
+    {
+      "id": "mooc",
+      "name": "慕课网",
+      "type": "video",
+      "searchUrl": "https://www.imooc.com/search?c=php&k=",
+      "enabled": true,
+      "priority": 7
+    },
+    {
+      "id": "z-library",
+      "name": "Z-Library",
+      "type": "ebook",
+      "searchUrl": "https://zh.z-lib.fm/s/",
+      "enabled": true,
+      "priority": 8
+    },
+    {
+      "id": "sci-hub",
+      "name": "Sci-Hub",
+      "type": "academic",
+      "searchUrl": "https://sci-hub.st/",
+      "enabled": true,
+      "priority": 9
+    },
+    {
+      "id": "xmsoushu",
+      "name": "熊猫搜索",
+      "type": "ebook",
+      "searchUrl": "https://xmsoushu.com/search?key=",
+      "enabled": true,
+      "priority": 10
+    },
+    {
+      "id": "arxiv",
+      "name": "arXiv",
+      "type": "academic",
+      "searchUrl": "https://arxiv.org/search/?query=",
+      "enabled": true,
+      "priority": 11
+    },
+    {
+      "id": "pansou",
+      "name": "盘搜",
+      "type": "ebook",
+      "searchUrl": "https://www.pansou.com/?wd=",
+      "enabled": true,
+      "priority": 12
+    },
+    {
+      "id": "qiaomi",
+      "name": "巧眯网",
+      "type": "pan-search",
+      "searchUrl": "https://www.qiaomi.cn/search?wd=",
+      "enabled": true,
+      "priority": 13
+    },
+    {
+      "id": "xuetutu",
+      "name": "学兔兔",
+      "type": "courseware",
+      "searchUrl": "https://www.bzfxw.com/search?word=",
+      "enabled": true,
+      "priority": 14
+    },
+    {
+      "id": "chaoxing",
+      "name": "超星汇雅电子书",
+      "type": "ebook",
+      "searchUrl": "https://book.chaoxing.com/search?searchType=1&searchWord=",
+      "enabled": true,
+      "priority": 15
+    },
+    {
+      "id": "nicefread",
+      "name": "畅读网",
+      "type": "ebook",
+      "searchUrl": "https://www.nicefread.cn/search?keyword=",
+      "enabled": true,
+      "priority": 16
+    },
+    {
+      "id": "qiushu",
+      "name": "千秋书在",
+      "type": "ebook",
+      "searchUrl": "https://www.qianshuwang.com/search?keyword=",
+      "enabled": true,
+      "priority": 17
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "type": "code",
+      "searchUrl": "https://github.com/search?q=",
+      "enabled": true,
+      "priority": 18
+    },
+    {
+      "id": "csdn",
+      "name": "CSDN",
+      "type": "tech",
+      "searchUrl": "https://so.csdn.net/so/search?q=",
+      "enabled": true,
+      "priority": 19
+    }
+  ]
+}
