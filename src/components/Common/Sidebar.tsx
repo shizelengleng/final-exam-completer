@@ -5,7 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { UNCATEGORIZED_ID } from '../../App'
 import { injectBuiltinKeywords } from '../../lib/classifier'
 
-type SubjectTab = 'search' | 'materials' | 'chat' | 'quiz' | 'review' | 'graph' | 'analysis' | 'video' | 'article' | 'wiki'
+type SubjectTab = 'search' | 'materials' | 'quiz' | 'content' | 'graph' | 'review' | 'analysis' | 'wiki'
 
 interface SidebarProps {
   currentSubjectId: string | null

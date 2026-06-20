@@ -32,9 +32,14 @@ async function callClaudeCLI(prompt: string, systemInstruction?: string): Promis
 ${prompt}`
 
   return new Promise((resolve, reject) => {
-    const child = spawn('claude', ['-p', '-', '--output-format', 'json', '--no-session-persistence'], {
+    const child = spawn('claude', [
+      '-p', '-',
+      '--output-format', 'json',
+      '--no-session-persistence',
+      '--bare',
+    ], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 120000,
+      timeout: 180000,
     })
 
     let stdout = ''

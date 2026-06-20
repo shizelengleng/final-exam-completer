@@ -113,4 +113,16 @@ contextBridge.exposeInMainWorld('electron', {
     readText: () => clipboard.readText(),
     writeText: (text: string) => clipboard.writeText(text),
   },
+  context: {
+    init: (subjectId: string) => ipcRenderer.invoke('context:init', subjectId),
+    read: (subjectId: string, filename: string) => ipcRenderer.invoke('context:read', subjectId, filename),
+    write: (subjectId: string, filename: string, content: string) => ipcRenderer.invoke('context:write', subjectId, filename, content),
+    list: (subjectId: string) => ipcRenderer.invoke('context:list', subjectId),
+    appendHistory: (subjectId: string, historyType: string, entry: { role: string; content: string; timestamp: string }) =>
+      ipcRenderer.invoke('context:appendHistory', subjectId, historyType, entry),
+    readHistory: (subjectId: string, historyType: string, limit?: number) =>
+      ipcRenderer.invoke('context:readHistory', subjectId, historyType, limit),
+    clearHistory: (subjectId: string, historyType: string) =>
+      ipcRenderer.invoke('context:clearHistory', subjectId, historyType),
+  },
 })

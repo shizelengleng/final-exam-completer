@@ -5,6 +5,7 @@ import { registerAIHandlers } from './ipc/aiHandlers'
 import { registerSearchHandlers } from './ipc/searchHandlers'
 import { registerDBHandlers } from './ipc/dbHandlers'
 import { registerWikiHandlers } from './ipc/wikiHandlers'
+import { registerContextHandlers } from './ipc/contextHandlers'
 import { migrateIfNeeded } from './db/store'
 import { registerTerminalGlobalApi } from './terminal/globalApi'
 import { writeContextFile } from './terminal/context'
@@ -60,6 +61,7 @@ app.whenReady().then(async () => {
   registerSearchHandlers()
   await registerDBHandlers()
   registerWikiHandlers()
+  registerContextHandlers()
   registerTerminalGlobalApi()
   writeContextFile()
   createWindow()

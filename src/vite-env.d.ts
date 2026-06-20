@@ -192,6 +192,15 @@ interface ElectronAPI {
     readText: () => string
     writeText: (text: string) => void
   }
+  context: {
+    init: (subjectId: string) => Promise<void>
+    read: (subjectId: string, filename: string) => Promise<string | null>
+    write: (subjectId: string, filename: string, content: string) => Promise<void>
+    list: (subjectId: string) => Promise<string[]>
+    appendHistory: (subjectId: string, historyType: string, entry: { role: string; content: string; timestamp: string }) => Promise<void>
+    readHistory: (subjectId: string, historyType: string, limit?: number) => Promise<{ role: string; content: string; timestamp: string }[]>
+    clearHistory: (subjectId: string, historyType: string) => Promise<void>
+  }
 }
 
 declare global {

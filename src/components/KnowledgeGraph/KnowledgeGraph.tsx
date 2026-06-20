@@ -1,26 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Input, Button, Tag, Spin, Empty, Checkbox, message } from 'antd'
+import { Input, Button, Tag, Empty, Checkbox, message, Spin } from 'antd'
 import {
   SearchOutlined,
   ExpandOutlined,
   NodeIndexOutlined,
   ApartmentOutlined as LayoutIcon,
-  SendOutlined,
-  RobotOutlined,
   BookOutlined,
 } from '@ant-design/icons'
 import VisGraph, { type VisGraphRef } from './VisGraph'
 import type { ConceptNode, KnowledgeGraphData } from './types'
 import { CATEGORY_COLORS, CATEGORY_LABELS, RELATION_LABELS } from './types'
 import MaterialPicker from '../Common/MaterialPicker'
+import ConversationPanel from '../Common/ConversationPanel'
 import type { Material } from '../Common/MaterialPicker'
-
-interface ChatMsg {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  materialRefs?: string[]
-}
 
 const DIFFICULTY_LABELS: Record<string, string> = {
   basic: '基础',
@@ -43,9 +35,6 @@ interface KnowledgeGraphProps {
 const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
   const [allMaterials, setAllMaterials] = useState<Material[]>([])
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([])
-  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([])
-  const [chatInput, setChatInput] = useState('')
-  const [loading, setLoading] = useState(false)
   const [graphData, setGraphData] = useState<KnowledgeGraphData | null>(null)
   const [graphHistory, setGraphHistory] = useState<KnowledgeGraphData[]>([])
   const [selectedNode, setSelectedNode] = useState<ConceptNode | null>(null)
@@ -56,17 +45,13 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
     Object.keys(CATEGORY_COLORS)
   )
   const [showDetail, setShowDetail] = useState(true)
+  const [graphLoading, setGraphLoading] = useState(false)
   const graphRef = useRef<VisGraphRef>(null)
-  const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadMaterials()
     loadGraphHistory()
   }, [subjectId])
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages])
 
   const loadMaterials = async () => {
     const data = await window.electron?.db.list('materials')
@@ -84,28 +69,22 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
     if (graphs.length > 0 && !graphData) setGraphData(graphs[0])
   }
 
-  const handleChatSend = async () => {
-    const text = chatInput.trim()
-    if (!text || loading) return
-
-    const userMsg: ChatMsg = {
-      id: `msg_${Date.now()}`,
-      role: 'user',
-      content: text,
+  const handleGenerateGraph = async () => {
+    const selectedMats = allMaterials.filter((m) => selectedMaterialIds.includes(m.id))
+    if (selectedMats.length === 0) {
+      message.warning('请先选择至少一份资料')
+      return
     }
-    setChatMessages((prev) => [...prev, userMsg])
-    setChatInput('')
-    setLoading(true)
 
+    setGraphLoading(true)
     try {
-      // 优先读取 Wiki 内容
       const allNodes: ConceptNode[] = []
       const allEdges: { from: string; to: string; type: string; label: string }[] = []
       const seenNodeNames = new Set<string>()
 
       const chunks: { name: string; content: string }[] = []
-      const wikiDir = await window.electron?.wiki.getDir(subjectId)
 
+      const wikiDir = await window.electron?.wiki.getDir(subjectId)
       if (wikiDir) {
         const wikiContent = await window.electron?.wiki.readAllPages(subjectId, 'concept')
         if (wikiContent) {
@@ -115,18 +94,7 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
         }
       }
 
-      // Wiki 不可用时，使用原始资料
       if (chunks.length === 0) {
-        const selectedMats = allMaterials.filter((m) => selectedMaterialIds.includes(m.id))
-        if (selectedMats.length === 0) {
-          const reply: ChatMsg = {
-            id: `msg_${Date.now() + 1}`,
-            role: 'assistant',
-            content: '请先在右侧面板选择要生成图谱的资料，然后告诉我你想要什么样的知识图谱。',
-          }
-          setChatMessages((prev) => [...prev, reply])
-          return
-        }
         for (const mat of selectedMats) {
           const content = mat.content
           if (content.length <= CHUNK_SIZE) {
@@ -139,40 +107,24 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
         }
       }
 
-      const progressMsg: ChatMsg = {
-        id: `msg_progress`,
-        role: 'assistant',
-        content: `正在分析 ${selectedMats.length} 份资料（${chunks.length} 个分块），生成知识图谱中...`,
-      }
-      setChatMessages((prev) => [...prev, progressMsg])
-
       for (const chunk of chunks) {
         const result = await window.electron?.ai.generateGraphFromContent(chunk.content)
         if (!result) continue
 
-        // 去重合并节点
         for (const node of result.nodes) {
           if (!seenNodeNames.has(node.name)) {
             seenNodeNames.add(node.name)
             allNodes.push(node)
           }
         }
-        // 合并边
         allEdges.push(...result.edges)
       }
 
       if (allNodes.length === 0) {
-        setChatMessages((prev) => prev.filter((m) => m.id !== 'msg_progress'))
-        const reply: ChatMsg = {
-          id: `msg_${Date.now() + 1}`,
-          role: 'assistant',
-          content: '未能从资料中提取出有效的知识结构，请确认资料内容包含可识别的知识点。',
-        }
-        setChatMessages((prev) => [...prev, reply])
+        message.warning('未能从资料中提取出有效的知识结构')
         return
       }
 
-      // 去重边
       const edgeSet = new Set<string>()
       const uniqueEdges = allEdges.filter((e) => {
         const key = `${e.from}->${e.to}:${e.type}`
@@ -184,7 +136,7 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
       const newGraph: KnowledgeGraphData = {
         id: `kg_${Date.now()}`,
         subjectId,
-        title: text,
+        title: `知识图谱 - ${selectedMats.map((m) => m.name).join(', ')}`,
         nodes: allNodes,
         edges: uniqueEdges,
         createdAt: new Date().toISOString(),
@@ -195,31 +147,29 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
       setSelectedNode(null)
       setGraphHistory((prev) => [newGraph, ...prev])
 
-      // 移除进度消息
-      setChatMessages((prev) => prev.filter((m) => m.id !== 'msg_progress'))
-
-      const matNames = selectedMats.map((m) => m.name).join('、')
-      const reply: ChatMsg = {
-        id: `msg_${Date.now() + 1}`,
-        role: 'assistant',
-        content: `知识图谱生成完成！\n\n选取了 ${selectedMats.length} 份资料：${matNames}\n生成了 ${allNodes.length} 个概念节点和 ${uniqueEdges.length} 条关系。${chunks.length > 1 ? `\n（资料较大，分 ${chunks.length} 块处理后合并）` : ''}`,
-        materialRefs: selectedMats.map((m) => m.name),
-      }
-      setChatMessages((prev) => [...prev, reply])
+      message.success(`生成了 ${allNodes.length} 个概念节点和 ${uniqueEdges.length} 条关系`)
     } catch (err: unknown) {
-      setChatMessages((prev) => prev.filter((m) => m.id !== 'msg_progress'))
       const errMsg = err instanceof Error ? err.message : '生成失败'
-      const reply: ChatMsg = {
-        id: `msg_${Date.now() + 1}`,
-        role: 'assistant',
-        content: errMsg.includes('API Key')
-          ? '请先在右上角设置中配置 API Key'
-          : `出错了: ${errMsg}`,
+      if (errMsg.includes('API Key')) {
+        message.error('请先在右上角设置中配置 API Key')
+      } else {
+        message.error(`出错了: ${errMsg}`)
       }
-      setChatMessages((prev) => [...prev, reply])
     } finally {
-      setLoading(false)
+      setGraphLoading(false)
     }
+  }
+
+  const contextPrompt = `你是一个知识图谱助手。当前学科已生成知识图谱，包含 ${graphData?.nodes.length || 0} 个节点和 ${graphData?.edges.length || 0} 条关系。
+你可以：
+- 帮助分析图谱中的知识结构
+- 解释某个概念的含义和关联
+- 建议需要补充的知识点
+- 回答与图谱相关的学习问题`
+
+  const handleChatSend = async (text: string): Promise<string> => {
+    const fullPrompt = contextPrompt + `\n\n用户：${text}`
+    return await window.electron?.ai.chat(fullPrompt) || 'AI 未能生成回复'
   }
 
   const handleNodeClick = useCallback((node: ConceptNode | null) => {
@@ -264,11 +214,10 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
     ) || []
 
   return (
-    <div className="flex flex-col h-full gap-4 p-6">
-      {/* Top Controls Bar */}
-      <div className="flex gap-4 flex-shrink-0">
-        {/* Material Picker - compact */}
-        <div className="bg-white rounded-xl p-3 shadow-sm flex-shrink-0" style={{ width: 240 }}>
+    <div className="flex h-full">
+      {/* Left Sidebar: Material Picker + ConversationPanel */}
+      <div className="w-80 flex flex-col border-r border-gray-200 bg-gray-50 flex-shrink-0">
+        <div className="p-3 border-b border-gray-200">
           <div className="flex items-center gap-2 mb-2">
             <BookOutlined className="text-blue-500" />
             <span className="text-xs font-semibold text-gray-700">选择资料</span>
@@ -276,114 +225,42 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
               <Tag color="blue" className="!text-xs !ml-auto">{selectedMaterialIds.length} 份</Tag>
             )}
           </div>
-          <div className="h-32 overflow-auto">
+          <div className="h-24 overflow-auto">
             <MaterialPicker
               value={selectedMaterialIds}
               onChange={(ids) => setSelectedMaterialIds(ids)}
               materials={allMaterials}
             />
           </div>
+          <Button
+            type="primary"
+            size="small"
+            block
+            className="mt-2"
+            loading={graphLoading}
+            onClick={handleGenerateGraph}
+            disabled={selectedMaterialIds.length === 0}
+          >
+            {graphLoading ? '生成中...' : '生成知识图谱'}
+          </Button>
         </div>
 
-        {/* AI Chat - compact horizontal */}
-        <div className="bg-white rounded-xl p-3 shadow-sm flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <RobotOutlined className="text-blue-500" />
-            <span className="text-xs font-semibold text-gray-700">AI 图谱助手</span>
-            {chatMessages.length > 0 && (
-              <Tag color="blue" className="!text-xs !ml-auto">{chatMessages.length} 条</Tag>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Input.TextArea
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onPressEnter={(e) => {
-                if (!e.shiftKey) {
-                  e.preventDefault()
-                  handleChatSend()
-                }
-              }}
-              placeholder="描述你想要的图谱，如「帮我整理数据结构的知识图谱」"
-              autoSize={{ minRows: 1, maxRows: 2 }}
-              className="flex-1"
-            />
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleChatSend}
-              loading={loading}
-              className="!h-auto"
-            />
-          </div>
-          {chatMessages.length > 0 && (
-            <div className="mt-2 max-h-20 overflow-auto">
-              {chatMessages.slice(-3).map((msg) => (
-                <div key={msg.id} className={`text-xs mb-1 ${msg.role === 'user' ? 'text-blue-600 text-right' : 'text-gray-600'}`}>
-                  {msg.role === 'user' ? `你: ${msg.content.substring(0, 60)}` : `AI: ${msg.content.substring(0, 80)}...`}
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="flex-1 min-h-0">
+          <ConversationPanel
+            subjectId={subjectId}
+            feature="graph"
+            contextPrompt={contextPrompt}
+            onSend={handleChatSend}
+            placeholder="询问图谱相关问题..."
+            showSaveToWiki={false}
+          />
         </div>
-
-        {/* Filters & History - compact */}
-        {graphData && (
-          <div className="bg-white rounded-xl p-3 shadow-sm flex-shrink-0" style={{ width: 220 }}>
-            <div className="flex items-center gap-2 mb-2">
-              <SearchOutlined className="text-blue-500" />
-              <span className="text-xs font-semibold text-gray-700">筛选与历史</span>
-            </div>
-            <Input.Search
-              placeholder="搜索概念..."
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              onSearch={handleSearch}
-              size="small"
-              className="mb-2"
-            />
-            <div className="flex flex-wrap gap-1 mb-2">
-              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                <Checkbox
-                  key={key}
-                  checked={activeCategories.includes(key)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setActiveCategories((prev) => [...prev, key])
-                    } else {
-                      setActiveCategories((prev) => prev.filter((c) => c !== key))
-                    }
-                  }}
-                >
-                  <span className="text-xs">{label}</span>
-                </Checkbox>
-              ))}
-            </div>
-            {graphHistory.length > 0 && (
-              <div className="max-h-16 overflow-auto">
-                {graphHistory.slice(0, 5).map((g) => (
-                  <div
-                    key={g.id}
-                    className={`flex items-center gap-1 px-1.5 py-1 rounded cursor-pointer text-xs ${
-                      graphData?.id === g.id ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50 text-gray-500'
-                    }`}
-                    onClick={() => { setGraphData(g); setSelectedNode(null) }}
-                  >
-                    <span className="flex-1 truncate">{g.title}</span>
-                    <span className="text-gray-400">{g.nodes.length}节点</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Main Graph Area */}
-      <div className="flex-1 flex flex-col gap-4 min-w-0">
-        {/* Toolbar */}
+      {/* Center: Graph Canvas */}
+      <div className="flex-1 flex flex-col min-w-0">
         {graphData && (
-          <div className="bg-white rounded-xl px-4 py-2 shadow-sm flex items-center justify-between">
+          <div className="px-4 py-2 border-b border-gray-200 flex items-center justify-between flex-shrink-0 bg-white">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700 truncate max-w-xs">
                 {graphData.title}
@@ -392,6 +269,31 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
               <Tag>{graphData.edges.length} 关系</Tag>
             </div>
             <div className="flex items-center gap-2">
+              <Input.Search
+                placeholder="搜索概念..."
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onSearch={handleSearch}
+                size="small"
+                style={{ width: 160 }}
+              />
+              <div className="flex flex-wrap gap-1">
+                {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                  <Checkbox
+                    key={key}
+                    checked={activeCategories.includes(key)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setActiveCategories((prev) => [...prev, key])
+                      } else {
+                        setActiveCategories((prev) => prev.filter((c) => c !== key))
+                      }
+                    }}
+                  >
+                    <span className="text-xs">{label}</span>
+                  </Checkbox>
+                ))}
+              </div>
               <Button
                 size="small"
                 type={layout === 'force' ? 'primary' : 'default'}
@@ -419,9 +321,8 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
           </div>
         )}
 
-        {/* Graph Canvas */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm overflow-hidden">
-          {loading && !graphData ? (
+        <div className="flex-1 bg-white overflow-hidden">
+          {graphLoading && !graphData ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <Spin size="large" />
@@ -442,18 +343,38 @@ const KnowledgeGraph = ({ subjectId }: KnowledgeGraphProps) => {
               <Empty
                 description={
                   <span className="text-gray-400">
-                    在左侧告诉 AI 你想要什么样的知识图谱
+                    选择资料后点击「生成知识图谱」开始
                   </span>
                 }
               />
             </div>
           )}
         </div>
+
+        {graphHistory.length > 0 && (
+          <div className="px-4 py-2 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <div className="flex items-center gap-2 overflow-auto">
+              <span className="text-xs text-gray-500 flex-shrink-0">历史:</span>
+              {graphHistory.slice(0, 8).map((g) => (
+                <div
+                  key={g.id}
+                  className={`flex items-center gap-1 px-2 py-1 rounded cursor-pointer text-xs whitespace-nowrap ${
+                    graphData?.id === g.id ? 'bg-blue-100 text-blue-600' : 'bg-white hover:bg-gray-100 text-gray-600'
+                  }`}
+                  onClick={() => { setGraphData(g); setSelectedNode(null) }}
+                >
+                  <span className="truncate max-w-[120px]">{g.title}</span>
+                  <span className="text-gray-400">{g.nodes.length}节点</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right Detail Panel */}
       {showDetail && selectedNode && (
-        <div className="w-72 flex-shrink-0 bg-white rounded-xl p-4 shadow-sm overflow-auto">
+        <div className="w-72 flex-shrink-0 bg-white border-l border-gray-200 p-4 overflow-auto">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-700">概念详情</h3>
             <Button

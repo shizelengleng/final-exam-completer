@@ -12,13 +12,12 @@ import ChatPanel from './components/Chat/ChatPanel'
 
 import WeakAnalysis from './components/Analysis/WeakAnalysis'
 import SearchPanel from './components/Search/SearchPanel'
-import VideoProduction from './components/Skills/VideoProduction'
-import BeautifulArticle from './components/Skills/BeautifulArticle'
+import ContentGenerator from './components/Content/ContentGenerator'
 import WikiBrowser from './components/Wiki/WikiBrowser'
 import { useTheme } from './contexts/ThemeContext'
 import { injectBuiltinKeywords } from './lib/classifier'
 
-type SubjectTab = 'search' | 'materials' | 'chat' | 'quiz' | 'review' | 'graph' | 'analysis' | 'video' | 'article' | 'wiki'
+type SubjectTab = 'search' | 'materials' | 'quiz' | 'content' | 'graph' | 'review' | 'analysis' | 'wiki'
 
 const DEFAULT_SUBJECTS: Subject[] = [
   { id: 'math', name: '数学', color: '#1677ff', keywords: ['数学', '微积分', '线性代数', '概率', '统计', '极限', '导数', '积分', '矩阵', '方程', '函数', '几何', '代数', '三角'] },
@@ -156,20 +155,16 @@ const App = () => {
         return <SearchPanel subjectId={currentSubjectId} key={refreshKey} />
       case 'materials':
         return <MaterialList subjectId={currentSubjectId} key={refreshKey} />
-      case 'chat':
-        return <ChatPanel subjectId={currentSubjectId} key={refreshKey} />
       case 'quiz':
         return <QuizSession subjectId={currentSubjectId} key={refreshKey} />
+      case 'content':
+        return <ContentGenerator subjectId={currentSubjectId} key={refreshKey} />
       case 'review':
         return <WrongBook subjectId={currentSubjectId} key={refreshKey} />
       case 'graph':
         return <KnowledgeGraph subjectId={currentSubjectId} key={refreshKey} />
       case 'analysis':
         return <WeakAnalysis subjectId={currentSubjectId} key={refreshKey} />
-      case 'video':
-        return <VideoProduction subjectId={currentSubjectId} key={refreshKey} />
-      case 'article':
-        return <BeautifulArticle subjectId={currentSubjectId} key={refreshKey} />
       case 'wiki':
         return <WikiBrowser subjectId={currentSubjectId} key={refreshKey} />
       default:
